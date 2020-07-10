@@ -21,6 +21,28 @@ void logout(int signum) {
     exit(0);
 }
 
+/*void *print(void* arg) {
+    struct ChatMsg msg;
+    fd_set rfds;
+    bzero(&msg, sizeof(msg));
+    while (1) {
+        FD_ZERO(&rfds);
+        FD_SET(sockfd, &rfds);
+        int retval = select(sockfd + 1, &rfds, NULL, NULL, NULL);
+        if (retval < 0) {
+            perror("select() in print");
+            exit(1);
+        } else if (retval) {
+            if (recv(sockfd, &msg, sizeof(msg), 0) >0) {
+                printf("%s : %s\n", msg.name, msg.msg);
+            }
+        } else {
+            DBG(RED"Error"NONE"The Server is out of service!\n");
+            exit(1);
+        }
+    }
+}*/
+
 
 int main(int argc, char **argv) {
     int opt;
@@ -61,7 +83,7 @@ int main(int argc, char **argv) {
 
 
     DBG("<"GREEN"Conf Show"NONE"> : server_ip = %s, port = %d, team = %s, name = %s\n%s",\
-        server_ip, server_port, team ? "BLUE": "RED", request.name, request.msg);
+        server_ip, server_port, request.team ? "BLUE": "RED", request.name, request.msg);
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
@@ -77,7 +99,7 @@ int main(int argc, char **argv) {
     
     sendto(sockfd, (void *)&request, sizeof(request), 0, (struct sockaddr *)&server, len);
     
-    fd_set set;
+    /*fd_set set;
     FD_ZERO(&set);
     FD_SET(sockfd, &set);
     struct timeval tv;
@@ -90,7 +112,7 @@ int main(int argc, char **argv) {
         exit(1);
     } else if (retval) {
         int ret = recvfrom(sockfd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&server, &len);
-        if (ret != sizeof(response) || response,type) {
+        if (ret != sizeof(response) || response.type) {
             DBG(RED"Error"NONE"The Game Server refused you login\n\tThis maybe helpful %s\n", response.msg);
             exit(1);
         }
@@ -99,19 +121,31 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    DBG(GREEN"Server"NONE" : %s\n", response.msg);
+    DBG(GREEN"Server"NONE" : %s\n", response.msg);*/
 
     connect(sockfd, (struct sockaddr *)&server, len);
+
+    pthread_t recv_t;
+    if (pthread_create(&recv_t, NULL, do_recv, NULL) < 0) {
+        perror("pthread_create()");
+        exit(1);
+    }
 
     signal(SIGINT, logout); 
     while (1) {
         struct ChatMsg msg;
-        msg.type = CHAT_WALL:
+        msg.type = CHAT_WALL;
         printf(RED"Please Input:  \n"NONE);
         scanf("%[^\n]S", msg.msg);
         getchar();
-        send(sockfd, (void *)&msg, sizeof(msg), 0);
+        if (strlen(msg.msg)) {
+            if (msg.msg[0] == '@') msg.type = CHAT_MSG;
+            if (msg.msg[0] == '#') msg.type = CHAT_FUNC;
+            send(sockfd, (void *)&msg, sizeof(msg), 0);
+        }
     }
+
+    //pthread_join(recv_t, NULL);
 
     return 0;
 }

@@ -1,1 +1,1 @@
-gcc client.c ../common/common.c ../common/data.c ../common/udp_client.c ../common/udp_server.c ../common/udp_epoll.c ../server/server.c -I ../common/ -D _D
+gcc client.c ../common/common.c ../common/data.c ../common/udp_client.c ../common/client_recv.c -I ../common/ -lpthread -D _D
