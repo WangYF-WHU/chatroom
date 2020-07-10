@@ -12,6 +12,10 @@ char server_ip[20] = {0};
 char *conf = "./football.conf";
 int sockfd = -1;
 
+/*update*/
+WINDOW *message_win, *message_sub,  *info_win, *info_sub, *input_win, *input_sub;
+int msgnum = 0;
+
 void logout(int signum) {
     struct ChatMsg msg;
     msg.type = CHAT_FIN;
@@ -45,9 +49,14 @@ void logout(int signum) {
 
 
 int main(int argc, char **argv) {
+	
+	/*update*/
+	setlocale(LC_ALL,"");
+	
     int opt;
     struct LogRequest request;
     struct LogResponse response;
+    
     bzero(&request, sizeof(request));
     bzero(&response, sizeof(response));
 
@@ -91,13 +100,20 @@ int main(int argc, char **argv) {
     server.sin_addr.s_addr = inet_addr(server_ip);
 
     socklen_t len = sizeof(server);
-
+	
+	/*update*/
+	init_ui();
+	
+	//if ((sockfd = socket_create_udp(5555)) < 0) {
     if ((sockfd = socket_udp()) < 0) {
         perror("socket_udp()");
         exit(1);
     }
     
     sendto(sockfd, (void *)&request, sizeof(request), 0, (struct sockaddr *)&server, len);
+    
+    /*update*/
+    struct ChatMsg tmp;
     
     fd_set set;
     FD_ZERO(&set);
@@ -123,6 +139,10 @@ int main(int argc, char **argv) {
 
     DBG(GREEN"Server"NONE" : %s\n", response.msg);
 
+	/*update*/
+	strcpy(tmp.msg, response.msg);
+    show_message(message_sub, &tmp, 1);
+
     connect(sockfd, (struct sockaddr *)&server, len);
 
     pthread_t recv_t;
@@ -132,6 +152,15 @@ int main(int argc, char **argv) {
     }
 
     signal(SIGINT, logout); 
+    
+    /*update*/
+    noecho();
+    cbreak();
+    while(1){
+    	send_chat();
+    }
+    
+    /*
     while (1) {
         struct ChatMsg msg;
         msg.type = CHAT_WALL;
@@ -144,7 +173,7 @@ int main(int argc, char **argv) {
             send(sockfd, (void *)&msg, sizeof(msg), 0);
         }
     }
-
+	*/
     //pthread_join(recv_t, NULL);
 
     return 0;
