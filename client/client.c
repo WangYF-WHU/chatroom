@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
     if (!strlen(request.msg)) strcpy(request.msg, get_conf_value(conf, "LOGMSG"));
 
 
-    DBG("<"GREEN"Conf Show"NONE"> : server_ip = %s, port = %d, team = %s, name = %s\n%s",\
+    DBG("<"GREEN"Conf Show"NONE"> : server_ip = %s, port = %d, team = %s, name = %s\n%s\n",\
         server_ip, server_port, request.team ? "BLUE": "RED", request.name, request.msg);
 
     struct sockaddr_in server;
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
     
     sendto(sockfd, (void *)&request, sizeof(request), 0, (struct sockaddr *)&server, len);
     
-    /*fd_set set;
+    fd_set set;
     FD_ZERO(&set);
     FD_SET(sockfd, &set);
     struct timeval tv;
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    DBG(GREEN"Server"NONE" : %s\n", response.msg);*/
+    DBG(GREEN"Server"NONE" : %s\n", response.msg);
 
     connect(sockfd, (struct sockaddr *)&server, len);
 
