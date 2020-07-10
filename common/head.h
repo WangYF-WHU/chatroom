@@ -45,4 +45,10 @@
 #include "sub_reactor.h"
 #include "udp_epoll.h"
 #include "client_recv.h"
+
+#include "chat_ui.h"
+#include "send_chat.h"
+#include <ncurses.h>
+#include <locale.h>
+
 #endif

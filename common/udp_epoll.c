@@ -11,7 +11,25 @@ extern struct User *rteam;
 extern struct User *bteam;
 extern int repollfd, bepollfd;
 
-int udp_connect(struct sockaddr_in *client) {
+void add_event_ptr(int epollfd, int fd, int events, struct User *user) {
+    struct epoll_event ev;
+    ev.events = events;
+    ev.data.ptr = (void *)user;
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
+}
+
+void del_event(int epollfd, int fd) {
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+}
+
+int find_sub(struct User *team){
+	for(int i=0;i<MAX;++i){
+		if(!team[i].online) return i;
+	}
+	return -1;
+}
+
+int udp_connect(struct sockaddr_in *client) { //32行 视频49分钟
     int sockfd;
     if ((sockfd = socket_create_udp(port)) < 0) {
         perror("socket_create_udp");
@@ -34,7 +52,7 @@ int check_online(struct LogRequest *request) {
 }
 
 
-int udp_accept(int fd, struct User *user) {
+int udp_accept(int fd, struct User *user) { //52行 视频48分钟 
     int new_fd, ret;
     struct sockaddr_in client;
     struct LogRequest request;
@@ -52,39 +70,36 @@ int udp_accept(int fd, struct User *user) {
         return -1;
     }
     
-   /* if (check_online(&request)) {
+	if (check_online(&request)) {
         response.type = 1;
         strcpy(response.msg, "You are Already Login!");
         sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
         return -1;
-    }*/
+    }
 
-    response.type = 0;
-    strcpy(response.msg, "Login Success. Enjoy yourself!");
-    sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
-    
     if (request.team) {
         DBG(GREEN"Info"NONE" : "BLUE"%s login on %s:%d  <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
     } else {
         DBG(GREEN"Info"NONE" : "RED"%s login on %s:%d   <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
     }
-
+	strcpy(user->ip,inet_ntoa(client.sin_addr));
     strcpy(user->name, request.name);
     user->team = request.team;
+    user->score=0;
+    memset(user->test,0,sizeof(user->test));
     new_fd = udp_connect(&client);
     user->fd = new_fd;
+    
+    char cmd[512]={0};
+    /*中间是跟老师本地的测评记录有关的 跳过*/
+    
+    response.type = 0;
+    bzero(cmd,sizeof(cmd));
+	sprintf(cmd,"%s<%s> Login Success. Enjoy yourself,You have get %d for test003!\n",user->realname,user->id,user->score); 
+	strcpy(response.msg, cmd);
+    send(new_fd,(void *)&response,sizeof(response),0);
+	//sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
     return new_fd;
-}
-
-void add_event_ptr(int epollfd, int fd, int events, struct User *user) {
-    struct epoll_event ev;
-    ev.events = events;
-    ev.data.ptr = (void *)user;
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev);
-}
-
-void del_event(int epollfd, int fd) {
-    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
 }
 
 int find_sub(struct User *team) {
@@ -94,8 +109,14 @@ int find_sub(struct User *team) {
     return -1;
 }
 
-void add_to_sub_reactor(struct User *user){
+void add_to_sub_reactor(struct User *user){ //120行 视频52分半 
     struct User *team = (user->team ? bteam : rteam);
+    DBG(YELLOW"Main Thread : "NONE"Add to sub_reactor\n");
+    if(user->team)
+    	pthread_mutex_lock(&bmutex);
+    else
+    	pthread_mutex_lock(&rmutex);
+    	
     int sub = find_sub(team);
     if (sub < 0) {
         fprintf(stderr, "Full Team\n");
@@ -104,6 +125,11 @@ void add_to_sub_reactor(struct User *user){
     team[sub] = *user;
     team[sub].online = 1;
     team[sub].flag = 10;
+    if(user->team)
+    	pthread_mutex_unlock(&bmutex);
+    else
+    	pthread_mutex_unlock(&rmutex);
+    
     DBG(L_RED"sub = %d, name = %s\n", sub, team[sub].name);
     if (user->team) 
         add_event_ptr(bepollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);

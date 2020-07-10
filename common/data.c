@@ -6,3 +6,6 @@
  ************************************************************************/
 
 char conf_ans[50] = {0};
+int repollfd, bepollfd;
+struct User *rteam, *bteam;
+int port = 0;

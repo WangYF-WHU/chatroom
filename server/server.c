@@ -13,9 +13,11 @@ struct Map court;
 struct Bpoint ball; //球的位置
 struct BallStatus ball_status; //球的状态
 struct Score score;
-int repollfd, bepollfd;
-struct User *rteam, *bteam;
-int port = 0;
+extern int repollfd, bepollfd; //int repollfd, bepollfd;
+extern struct User *rteam, *bteam; // struct User *rteam, *bteam;
+extern int port; // int port=0;
+pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER; //update
+pthread_mutex_t bmutex = PTHREAD_MUTEX_INITIALIZER; //update
 
 int main(int argc, char **argv) {
     int opt, listener, epollfd;
@@ -72,9 +74,6 @@ int main(int argc, char **argv) {
     task_queue_init(&redQueue, MAX, repollfd);
     task_queue_init(&blueQueue, MAX, bepollfd);
 
-    task_queue_init(&redQueue, MAX, repollfd);
-    task_queue_init(&blueQueue, MAX, bepollfd);
-
     pthread_create(&red_t, NULL, sub_reactor, (void *)&redQueue);
     pthread_create(&blue_t, NULL, sub_reactor, (void *)&blueQueue);
     
@@ -100,17 +99,15 @@ int main(int argc, char **argv) {
         }
         for (int i = 0; i < nfds; i++) {
             struct User user;
+            bzero(&user,sizeof(user));
             char buff[512] = {0};
             if (events[i].data.fd == listener) {
                 int new_fd = udp_accept(listener, &user);
                 if (new_fd > 0) {
-                //    add_to_sub_reactor(&user);
+                    add_to_sub_reactor(&user);
                 }
             }
         }
-
     }
-
-
     return 0;
 }
