@@ -22,23 +22,58 @@ void send_all(struct ChatMsg *msg) { //14行 视频29分钟
 void send_to(char *to, struct ChatMsg *msg,int fd) { //22行 视频35min 
 	int flag=0;
 	for(int i=0;i<MAX;++i){
-		if(rteam[i].online&&(!strcmp(to,rteam[i].name)||!strcmp(to,rteam[i].real_name))){
-			send(rteam[i].fd,msg,sizeof(struct ChatMsg),0);
-			flag=1;
+		if(rteam[i].online && (!strcmp(to, rteam[i].name))) {
+			send(rteam[i].fd, msg, sizeof(struct ChatMsg), 0);
+			flag = 1;
 			break;
 		}
-		if(bteam[i].online&&(!strcmp(to,bteam[i].name)||!strcmp(to,bteam[i].real_name))){
-			send(bteam[i].fd,msg,sizeof(struct ChatMsg),0);
-			flag=1;
+		if(bteam[i].online && (!strcmp(to, bteam[i].name))) {
+			send(bteam[i].fd, msg, sizeof(struct ChatMsg), 0);
+			flag = 1;
 			break;
 		}
 	}
 	if(!flag){
 		memset(msg->msg,0,sizeof(msg->msg));
-		sprintf(msg->msg,"用户 %s 不在线，或用户名错误！ ",to);
+		sprintf(msg->msg,"The user %s isn't online or username error ",to);
 		msg->type=CHAT_SYS;
 		send(fd,msg,sizeof(struct ChatMsg),0);
 	}
+}
+
+void find_online_person(struct ChatMsg *msg) {
+    int tot = 0, loc = 0, w = 0;
+    char name[100];
+    for (int i = 0; i < MAX; i++) {
+        if (bteam[i].online) {
+            tot++;
+            if (w == 0) {
+                strcpy(name, bteam[i].name);
+                loc = strlen(bteam[i].name);
+                w++;
+            } else if (w < 3) {
+                name[loc] = ',';
+                strcpy(name + loc + 1, bteam[i].name);
+                loc += (1 + strlen(bteam[i].name));
+                w++;
+            }
+        }
+        if (rteam[i].online) {
+            tot++;
+            if (w == 0) {
+                strcpy(name, rteam[i].name);
+                loc = strlen(rteam[i].name);
+                w++;
+            } else if (w < 3) {
+                name[loc] = ',';
+                strcpy(name + loc + 1, rteam[i].name);
+                loc += (1 + strlen(rteam[i].name));
+                w++;
+            }
+        }
+    }
+    name[loc] = '\0';
+    sprintf(msg->msg, "The number of online users is %d, they are %s ...",  tot, name);
 }
 
 void do_work(struct User *user){ //45行 视频25min 
@@ -51,7 +86,7 @@ void do_work(struct User *user){ //45行 视频25min
     bzero(&r_msg,sizeof(r_msg));
     recv(user->fd, (void *)&msg, sizeof(msg), 0);
     if (msg.type & CHAT_WALL) {
-    	if(!user->test[4]){
+    	/*if(!user->test[4]){
     		printf("<%s> ~ %s \n", user->name, msg.msg);
     		r_msg.type = CHAT_SYS;
     		user->test[4] = 1;
@@ -63,11 +98,11 @@ void do_work(struct User *user){ //45行 视频25min
 			r_msg.type=CHAT_SYS;
 			send_all(&r_msg);
 			store_score1(4,user->id,user->real_name,user->ip,user->score);
-		}
-        printf("<%s> $ %s \n", user->name, msg.msg);
-        strcpy(msg.name,user->real_name);
+		}*/
+        printf("<%s> ~ %s \n", user->name, msg.msg);
+        strcpy(msg.name, user->name);//strcpy(msg.name,user->real_name);
         send_all(&msg);
-    } else if (msg.type & CHAT_MSG) { //70行 视频30分钟 
+    } else if (msg.type & CHAT_MSG) {
     	char to[20]={0};
     	int i=1;
     	for(;i<=21;i++){
@@ -76,26 +111,26 @@ void do_work(struct User *user){ //45行 视频25min
     	if(msg.msg[i]!=' ' || msg.msg[0]!='@'){
 			memset(&r_msg,0,sizeof(r_msg));
 			r_msg.type = CHAT_SYS;
-			sprintf(r_msg.msg,"私聊格式错误！");
+			sprintf(r_msg.msg,"Private chat format error!\n");
 			send(user->fd,(void *)&r_msg,sizeof(r_msg),0);	
 		} else{
 			msg.type = CHAT_MSG;
-			strcpy(msg.name,user->real_name);
+			strcmp(msg.name,user->name);//strcpy(msg.name,user->real_name);
 			strncpy(to,msg.msg+1,i-1);
-			sent_to(to,&msg,user->fd);
+			send_to(to,&msg,user->fd);
 		}
 		
 	} else if (msg.type & CHAT_FIN) { //88行 视频37分钟 
-		bzro(msg.msg,sizeof(msg.msg));
+		bzero(msg.msg,sizeof(msg.msg));
 		msg.type=CHAT_SYS;
-		sprintf(msg.msg,"注意：我们的好朋友 %s 要下线了！\n",user->real_name);
-		strcpy(msg.name,user->real_name);
+        sprintf(msg.msg,"notice: Our fiend  %s has logouted \n",user->name);
+		strcpy(msg.name,user->name);//remove real_name
 		send_all(&msg);
 		if(user->team)
 			pthread_mutex_lock(&bmutex);
 		else
 			pthread_mutex_lock(&rmutex);
-		user->score = 0;
+		//user->score = 0;
         user->online = 0;
         int epollfd = user->team ? bepollfd : repollfd;
         del_event(epollfd, user->fd);
@@ -105,6 +140,10 @@ void do_work(struct User *user){ //45行 视频25min
 			pthread_mutex_unlock(&rmutex);
         printf(GREEN"Server Info"NONE" : %s logout!\n", user->name);
         close(user->fd);
+    } else if (msg.type & CHAT_FUNC) {
+        msg.type = CHAT_SYS;
+        find_online_person(&msg);
+        send(user->fd, (void *)&msg, sizeof(msg), 0);
     }
 }
 

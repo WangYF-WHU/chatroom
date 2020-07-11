@@ -17,6 +17,10 @@ struct task_queue {
     pthread_cond_t cond;
 };
 
+void send_all(struct ChatMsg *msg);
+void find_online_person(struct ChatMsg *msg);
+void send_to(char *to, struct ChatMsg *msg, int fd);
+void do_work(struct User *user);
 void task_queue_init(struct task_queue *taskQueue, int sum, int epollfd);
 void task_queue_push(struct task_queue *taskQueue, struct User *user);
 struct User *task_queue_pop(struct task_queue *taskQueue);

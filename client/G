@@ -1,1 +1,1 @@
-gcc client.c ../common/common.c ../common/data.c ../common/udp_client.c ../common/client_recv.c -I ../common/ -lpthread -D _D
+gcc client.c ../common/common.c ../common/data.c ../common/udp_client.c ../common/client_recv.c ../common/send_chat.c ../common/chat_ui.c -I ../common/ -lpthread -lncursesw -D _D

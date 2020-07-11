@@ -19,6 +19,12 @@ extern int port; // int port=0;
 pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER; //update
 pthread_mutex_t bmutex = PTHREAD_MUTEX_INITIALIZER; //update
 
+void logout2(int signum) {
+    struct ChatMsg msg;
+    msg.type = CHAT_FIN;
+    send_all(&msg);
+}
+
 int main(int argc, char **argv) {
     int opt, listener, epollfd;
     pthread_t red_t, blue_t;
@@ -90,9 +96,12 @@ int main(int argc, char **argv) {
     bzero(&client, sizeof(client));
     socklen_t len = sizeof(client);
 
+    signal(SIGINT, logout2);
+
     while (1) {
         DBG(YELLOW"Main Reactor"NONE" : Waiting for clienti.\n");
-        int nfds = epoll_wait(epollfd, events, MAX * 2, -1); 
+        int nfds = epoll_wait(epollfd, events, MAX * 2, -1);
+        printf("We have got a request");
         if (nfds < 0) {
             perror("epoll_wait()");
             exit(1);
